@@ -81,7 +81,7 @@ begin
                   '0'; -- Valor irrelevante se USE_PARITY = false
 
     -- Lógica de Próximo Estado
-    fsm_comb_proc: process(state_reg, s_axis_tvalid, baud_tick, bit_count_reg)
+    fsm_comb_proc: process(state_reg, s_axis_tvalid, baud_tick, bit_count_reg, busy_reg)
     begin
         state_next <= state_reg;
         bit_count_next <= bit_count_reg;
