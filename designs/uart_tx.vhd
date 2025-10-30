@@ -11,20 +11,20 @@ use IEEE.numeric_std.all;
 
 entity uart_tx is
     generic (
-        DATA_BITS   : natural range 5 to 9 := 8; -- Número de bits de dados
-        PARITY_TYPE : string := "EVEN";          -- "NONE", "EVEN" ou "ODD"
-        STOP_BITS   : natural := 1               -- Número de bits de parada
+        DATA_BITS   : natural range 5 to 9 := 8; -- Número de bits de dados a serem transmitidos
+        PARITY_TYPE : string := "NONE";          -- Tipo de paridade: "NONE" (nenhuma), "EVEN" (par) ou "ODD" (ímpar)
+        STOP_BITS   : natural := 1               -- Número de stop bits
     );
     port (
         -- Sinais Globais
         clk   : in  std_logic; -- Clock do sistema
         n_rst : in  std_logic; -- Reset síncrono, ativo-baixo
 
-        -- Interface do Baud Ticker
+        -- Interface do Ticker
         baud_tick        : in  std_logic; -- Pulso de 1 ciclo no baud rate
         tx_phase_trigger : out std_logic; -- Pulso para o phase_trigger do ticker
 
-        -- Interface de Dados (AXI-Stream Slave)
+        -- Interface de Dados (AXI-Stream)
         s_axis_tdata  : in  std_logic_vector(DATA_BITS - 1 downto 0);
         s_axis_tvalid : in  std_logic;
         s_axis_tready : out std_logic;
@@ -32,8 +32,8 @@ entity uart_tx is
         -- Saída Serial
         uart_tx : out std_logic; -- A linha serial de transmissão
 
-        -- Sinal de Status
-        busy    : out std_logic  -- '1' enquanto o frame está sendo enviado
+        -- Saída de Status
+        busy    : out std_logic
     );
 end entity uart_tx;
 
@@ -74,26 +74,28 @@ architecture rtl of uart_tx is
 
 begin
 
-    -- Lógica de Paridade
-    -- Calcula o bit de paridade com base no dado registrado (data_reg)
+    -- Lógica de Paridade (Combinacional)
+    -- Calcula o bit de paridade com base no dado já registrado (data_reg)
     parity_bit <= xor_reduce(data_reg) when (PARITY_TYPE = "EVEN") else
                   not xor_reduce(data_reg) when (PARITY_TYPE = "ODD") else
                   '0'; -- Valor irrelevante se USE_PARITY = false
 
-    -- Lógica de Próximo Estado
-    fsm_comb_proc: process(state_reg, s_axis_tvalid, baud_tick, bit_count_reg, busy_reg)
+    -- Lógica de Próximo Estad
+    fsm_comb_proc: process(state_reg, s_axis_tvalid, baud_tick, bit_count_reg)
     begin
+        -- Valores padrão
         state_next <= state_reg;
         bit_count_next <= bit_count_reg;
-        s_axis_tready_next <= '0';
-        busy_next <= busy_reg;
+        
+        s_axis_tready_next   <= '0';
+        busy_next            <= '1';
         tx_phase_trigger_next <= '0';
 
         case state_reg is
             
             -- Estado Ocioso: Espera por dados
             when s_IDLE =>
-                busy_next <= '0';
+                busy_next <= '0'; -- Único estado ocioso
                 s_axis_tready_next <= '1'; -- Pronto para dados
                 
                 if (s_axis_tvalid = '1') then
@@ -107,29 +109,28 @@ begin
                 
             -- Estado Start: Espera o primeiro tick para enviar o Start Bit
             when s_START =>
-                busy_next <= '1';
                 if (baud_tick = '1') then
                     state_next <= s_TRANSMIT;
-                    bit_count_next <= bit_count_reg - 1; -- Decrementa (Start Bit enviado)
+                    bit_count_next <= bit_count_reg - 1;
                 end if;
 
             -- Estado Transmit: Envia o restante do frame (Data, Parity, Stop)
             when s_TRANSMIT =>
-                busy_next <= '1';
                 if (baud_tick = '1') then
                     if (bit_count_reg > 1) then
                         bit_count_next <= bit_count_reg - 1;
                     else
+                        -- Este foi o último bit
                         bit_count_next <= 0;
                         state_next <= s_IDLE;
-                        busy_next <= '0';
+                        busy_next <= '0'; -- Fica ocioso
                     end if;
                 end if;
 
         end case;
     end process fsm_comb_proc;
     
-    -- Lógica dos Registradores
+    -- Registradores (Processo Síncrono)
     fsm_sync_proc: process(clk)
     begin
         if rising_edge(clk) then
@@ -137,12 +138,12 @@ begin
                 -- Reset de todos os registradores
                 state_reg <= s_IDLE;
                 bit_count_reg <= 0;
-                uart_tx_reg <= '1'; -- Linha ociosa é '1'
+                uart_tx_reg <= '1';
                 s_axis_tready_reg <= '1';
                 busy_reg <= '0';
                 tx_phase_trigger_reg <= '0';
                 data_reg <= (others => '0');
-                tx_buffer_reg <= (others => '1'); -- Preencher com '1's (idle)
+                tx_buffer_reg <= (others => '1');
                 
             else
                 -- Lógica síncrona principal
@@ -152,14 +153,14 @@ begin
                 busy_reg <= busy_next;
                 tx_phase_trigger_reg <= tx_phase_trigger_next;
                 
-                -- IDLE -> START: Latch do dado
+                -- IDLE -> START
                 if (state_reg = s_IDLE) and (s_axis_tvalid = '1') then
                     data_reg <= s_axis_tdata;
                 end if;
                 
                 -- START -> TRANSMIT: Envia '0' (Start Bit) e carrega o buffer
                 if (state_reg = s_START) and (baud_tick = '1') then
-                    uart_tx_reg <= '0'; -- Envia o Start Bit
+                    uart_tx_reg <= '0';
                     
                     if USE_PARITY then
                         tx_buffer_reg <= STOP_BITS_VEC & parity_bit & data_reg;
@@ -169,12 +170,12 @@ begin
                 
                 -- TRANSMIT -> TRANSMIT: Desloca e envia bits
                 elsif (state_reg = s_TRANSMIT) and (baud_tick = '1') then
-                    uart_tx_reg <= tx_buffer_reg(0); -- Envia LSB
-                    tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS - 1 downto 1); -- Desloca
+                    uart_tx_reg <= tx_buffer_reg(0);
+                    tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS - 1 downto 1);
                     
                 -- TRANSMIT -> IDLE: Volta ao estado ocioso
                 elsif (state_next = s_IDLE) then
-                    uart_tx_reg <= '1'; -- Volta a linha para ociosa
+                    uart_tx_reg <= '1';
                 end if;
                 
             end if;
