@@ -12,7 +12,7 @@ use IEEE.numeric_std.all;
 entity uart_tx is
     generic (
         DATA_BITS   : natural range 5 to 9 := 8; -- Número de bits de dados a serem transmitidos
-        PARITY_TYPE : string := "NONE";          -- Tipo de paridade: "NONE" (nenhuma), "EVEN" (par) ou "ODD" (ímpar)
+        PARITY_TYPE : string := "NONE";          -- Tipo de paridade: "NONE", "EVEN" ou "ODD"
         STOP_BITS   : natural := 1               -- Número de stop bits
     );
     port (
@@ -39,7 +39,7 @@ end entity uart_tx;
 
 architecture rtl of uart_tx is
 
-    -- Função local para calcular a paridade
+    -- Função para calcular a paridade
     function xor_reduce(vector : std_logic_vector) return std_logic is
         variable result : std_logic := '0';
     begin
@@ -57,7 +57,7 @@ architecture rtl of uart_tx is
     constant STOP_BITS_VEC  : std_logic_vector(STOP_BITS - 1 downto 0) := (others => '1');
     
     -- Tipos e Sinais Internos
-    type t_state is (s_IDLE, s_START, s_TRANSMIT);
+    type t_state is (IDLE, START, TRANSMIT);
     signal state_reg, state_next : t_state;
 
     -- Sinais da Datapath
@@ -75,68 +75,58 @@ architecture rtl of uart_tx is
 begin
 
     -- Lógica de Paridade (Combinacional)
-    -- Calcula o bit de paridade com base no dado já registrado (data_reg)
     parity_bit <= xor_reduce(data_reg) when (PARITY_TYPE = "EVEN") else
                   not xor_reduce(data_reg) when (PARITY_TYPE = "ODD") else
-                  '0'; -- Valor irrelevante se USE_PARITY = false
+                  '0';
 
-    -- Lógica de Próximo Estad
+    -- Lógica de Próximo Estado (FSM Combinacional)
     fsm_comb_proc: process(state_reg, s_axis_tvalid, baud_tick, bit_count_reg)
     begin
         -- Valores padrão
         state_next <= state_reg;
         bit_count_next <= bit_count_reg;
-        
         s_axis_tready_next   <= '0';
         busy_next            <= '1';
         tx_phase_trigger_next <= '0';
 
         case state_reg is
-            
-            -- Estado Ocioso: Espera por dados
-            when s_IDLE =>
-                busy_next <= '0'; -- Único estado ocioso
-                s_axis_tready_next <= '1'; -- Pronto para dados
-                
+            when IDLE =>
+                busy_next <= '0';
+                s_axis_tready_next <= '1';
                 if (s_axis_tvalid = '1') then
-                    -- Dado recebido, inicia a transmissão
-                    state_next <= s_START;
+                    state_next <= START;
                     s_axis_tready_next <= '0';
                     busy_next <= '1';
-                    tx_phase_trigger_next <= '1'; -- Reseta o ticker
-                    bit_count_next <= TOTAL_BITS; -- Carrega o contador total
+                    tx_phase_trigger_next <= '1';
+                    bit_count_next <= TOTAL_BITS;
                 end if;
                 
-            -- Estado Start: Espera o primeiro tick para enviar o Start Bit
-            when s_START =>
+            when START =>
                 if (baud_tick = '1') then
-                    state_next <= s_TRANSMIT;
+                    state_next <= TRANSMIT;
                     bit_count_next <= bit_count_reg - 1;
                 end if;
 
-            -- Estado Transmit: Envia o restante do frame (Data, Parity, Stop)
-            when s_TRANSMIT =>
+            when TRANSMIT =>
                 if (baud_tick = '1') then
                     if (bit_count_reg > 1) then
                         bit_count_next <= bit_count_reg - 1;
                     else
-                        -- Este foi o último bit
                         bit_count_next <= 0;
-                        state_next <= s_IDLE;
-                        busy_next <= '0'; -- Fica ocioso
+                        state_next <= IDLE;
+                        busy_next <= '0';
                     end if;
                 end if;
-
         end case;
     end process fsm_comb_proc;
     
-    -- Registradores (Processo Síncrono)
+    -- Registradores e Datapath (Processo Síncrono)
     fsm_sync_proc: process(clk)
     begin
         if rising_edge(clk) then
             if (n_rst = '0') then
                 -- Reset de todos os registradores
-                state_reg <= s_IDLE;
+                state_reg <= IDLE;
                 bit_count_reg <= 0;
                 uart_tx_reg <= '1';
                 s_axis_tready_reg <= '1';
@@ -144,40 +134,42 @@ begin
                 tx_phase_trigger_reg <= '0';
                 data_reg <= (others => '0');
                 tx_buffer_reg <= (others => '1');
-                
             else
-                -- Lógica síncrona principal
+                -- Atualização dos registradores de controle
                 state_reg <= state_next;
                 bit_count_reg <= bit_count_next;
                 s_axis_tready_reg <= s_axis_tready_next;
                 busy_reg <= busy_next;
                 tx_phase_trigger_reg <= tx_phase_trigger_next;
                 
-                -- IDLE -> START
-                if (state_reg = s_IDLE) and (s_axis_tvalid = '1') then
-                    data_reg <= s_axis_tdata;
-                end if;
-                
-                -- START -> TRANSMIT: Envia '0' (Start Bit) e carrega o buffer
-                if (state_reg = s_START) and (baud_tick = '1') then
-                    uart_tx_reg <= '0';
-                    
-                    if USE_PARITY then
-                        tx_buffer_reg <= STOP_BITS_VEC & parity_bit & data_reg;
-                    else
-                        tx_buffer_reg <= STOP_BITS_VEC & data_reg;
-                    end if;
-                
-                -- TRANSMIT -> TRANSMIT: Desloca e envia bits
-                elsif (state_reg = s_TRANSMIT) and (baud_tick = '1') then
-                    uart_tx_reg <= tx_buffer_reg(0);
-                    tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS - 1 downto 1);
-                    
-                -- TRANSMIT -> IDLE: Volta ao estado ocioso
-                elsif (state_next = s_IDLE) then
-                    uart_tx_reg <= '1';
-                end if;
-                
+                -- ** CORRIGIDO: Ações do Datapath baseadas no estado atual (case) **
+                case state_reg is
+                    when IDLE =>
+                        uart_tx_reg <= '1'; -- Mantém a linha ociosa
+                        if (s_axis_tvalid = '1') then
+                            data_reg <= s_axis_tdata; -- Latch do dado
+                        end if;
+
+                    when START =>
+                        -- Espera o primeiro tick para agir
+                        if (baud_tick = '1') then
+                            uart_tx_reg <= '0'; -- Envia o Start Bit
+                            
+                            -- Carrega o buffer de deslocamento
+                            if USE_PARITY then
+                                tx_buffer_reg <= STOP_BITS_VEC & parity_bit & data_reg;
+                            else
+                                tx_buffer_reg <= STOP_BITS_VEC & data_reg;
+                            end if;
+                        end if;
+
+                    when TRANSMIT =>
+                        -- Ações a cada tick durante a transmissão
+                        if (baud_tick = '1') then
+                            uart_tx_reg <= tx_buffer_reg(0); -- Envia LSB
+                            tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS - 1 downto 1); -- Desloca
+                        end if;
+                end case;
             end if;
         end if;
     end process fsm_sync_proc;
