@@ -112,6 +112,9 @@ begin
                         end if;
                     
                     when TRIM =>
+                        uart_tx_reg <= '1';
+                        s_axis_tready_reg <= '0';
+                        busy_reg <= '1';
                         phase_trigger_reg <= '0';
                         state_next_reg <= START;
 
@@ -126,7 +129,6 @@ begin
                             else
                                 tx_buffer_reg <= STOP_BITS_VEC & data_reg;
                             end if;
-                            uart_tx_reg <= tx_buffer_reg(0);
                             bit_count_next_reg <= 0;  -- Reseta o contador de dados enviados
                             state_next_reg <= TRANSMIT;
                         end if;
@@ -138,7 +140,7 @@ begin
                         phase_trigger_reg <= '0';
                         if (baud_tick = '1') then
                             tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS-1 downto 1); -- Desloca
-                            if (bit_count_reg < TX_BUFFER_BITS) then
+                            if (bit_count_reg < TX_BUFFER_BITS-1) then
                                 bit_count_next_reg <= bit_count_reg + 1;
                             else
                                 bit_count_next_reg <= 0;
@@ -146,7 +148,7 @@ begin
                             end if;
                         end if;
                 
-                end case ;
+                end case;
             end if;
         end if;
     end process sync_proc;
