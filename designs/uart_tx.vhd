@@ -82,76 +82,93 @@ begin
             if n_rst = '0' then
                 -- Reset de todos os registradores
                 state_reg            <= IDLE;
-                state_next_reg       <= IDLE;
                 bit_count_reg        <= 0;
-                bit_count_next_reg   <= 0;
                 data_reg             <= (others => '1');
                 tx_buffer_reg        <= (others => '1');
-                uart_tx_reg          <= '1';
-                s_axis_tready_reg    <= '0';
-                busy_reg             <= '1';
-                phase_trigger_reg    <= '0';
             else
                 -- Atualização dos registradores de controle
                 state_reg <= state_next_reg;
                 bit_count_reg <= bit_count_next_reg;
 
-                case(state_reg) is
+                case( state_reg ) is
                 
                     when IDLE =>
-                        uart_tx_reg <= '1';
-                        s_axis_tready_reg <= '1';
-                        busy_reg <= '0';
-                        phase_trigger_reg <= '0';
                         if (s_axis_tvalid = '1') then
-                            s_axis_tready_reg <= '0';
-                            busy_reg <= '1';
-                            phase_trigger_reg <= '1';
                             data_reg <= s_axis_tdata; -- Captura o dado recebido pelo AXIS
-                            state_next_reg <= TRIM;
                         end if;
-                    
-                    when TRIM =>
-                        uart_tx_reg <= '1';
-                        s_axis_tready_reg <= '0';
-                        busy_reg <= '1';
-                        phase_trigger_reg <= '0';
-                        state_next_reg <= START;
 
                     when START =>
-                        uart_tx_reg <= '0';
-                        s_axis_tready_reg <= '0';
-                        busy_reg <= '1';
-                        phase_trigger_reg <= '0';
                         if (baud_tick = '1') then
                             if (USE_PARITY) then
                                 tx_buffer_reg <= STOP_BITS_VEC & parity_bit & data_reg;
                             else
                                 tx_buffer_reg <= STOP_BITS_VEC & data_reg;
                             end if;
-                            bit_count_next_reg <= 0;  -- Reseta o contador de dados enviados
-                            state_next_reg <= TRANSMIT;
                         end if;
 
                     when TRANSMIT =>
-                        uart_tx_reg <= tx_buffer_reg(0); -- Envia LSB
-                        s_axis_tready_reg <= '0';
-                        busy_reg <= '1';
-                        phase_trigger_reg <= '0';
                         if (baud_tick = '1') then
                             tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS-1 downto 1); -- Desloca
-                            if (bit_count_reg < TX_BUFFER_BITS-1) then
-                                bit_count_next_reg <= bit_count_reg + 1;
-                            else
-                                bit_count_next_reg <= 0;
-                                state_next_reg <= IDLE;
-                            end if;
                         end if;
-                
+
+                    when others =>
                 end case;
             end if;
         end if;
     end process sync_proc;
+
+    comb_proc: process(state_reg, bit_count_reg, s_axis_tvalid, baud_tick, tx_buffer_reg)
+    begin
+        state_next_reg <= state_reg;
+        bit_count_next_reg <= bit_count_reg;
+
+        case(state_reg) is
+        
+            when IDLE =>
+                uart_tx_reg <= '1';
+                s_axis_tready_reg <= '1';
+                busy_reg <= '0';
+                phase_trigger_reg <= '0';
+                if (s_axis_tvalid = '1') then
+                    s_axis_tready_reg <= '0';
+                    busy_reg <= '1';
+                    phase_trigger_reg <= '1';
+                    state_next_reg <= TRIM;
+                end if;
+            
+            when TRIM =>
+                uart_tx_reg <= '1';
+                s_axis_tready_reg <= '0';
+                busy_reg <= '1';
+                phase_trigger_reg <= '0';
+                state_next_reg <= START;
+
+            when START =>
+                uart_tx_reg <= '0';
+                s_axis_tready_reg <= '0';
+                busy_reg <= '1';
+                phase_trigger_reg <= '0';
+                if (baud_tick = '1') then
+                    bit_count_next_reg <= 0;  -- Reseta o contador de dados enviados
+                    state_next_reg <= TRANSMIT;
+                end if;
+
+            when TRANSMIT =>
+                uart_tx_reg <= tx_buffer_reg(0); -- Envia LSB
+                s_axis_tready_reg <= '0';
+                busy_reg <= '1';
+                phase_trigger_reg <= '0';
+                if (baud_tick = '1') then
+                    if (bit_count_reg < TX_BUFFER_BITS-1) then
+                        bit_count_next_reg <= bit_count_reg + 1;
+                    else
+                        bit_count_next_reg <= 0;
+                        state_next_reg <= IDLE;
+                    end if;
+                end if;
+        
+        end case;
+    end process comb_proc;
 
     -- Conexões de Saída
     uart_tx <= uart_tx_reg;
