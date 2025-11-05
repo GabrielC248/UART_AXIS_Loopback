@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------------
 -- Company: CEPEDI
 -- Engineer: Gabriel Cavalcanti Coelho
--- Create Date: 28.10.2025
+-- Create Date: 05.11.2025
 -- Module Name: uart_tx
 ----------------------------------------------------------------------------------
 
@@ -60,7 +60,7 @@ architecture rtl of uart_tx is
     signal state_reg : t_state := IDLE;
 
     -- Sinais da Máquina de Estados
-    signal bit_count_reg, next_bit_count_reg : natural range 0 to TX_BUFFER_BITS-1 := 0;
+    signal bit_count_reg : natural range 0 to TX_BUFFER_BITS-1 := 0;
     signal data_reg      : std_logic_vector(DATA_BITS-1 downto 0) := (others => '0');
     signal tx_buffer_reg : std_logic_vector(TX_BUFFER_BITS-1 downto 0) := (others => '1');
     signal parity_bit    : std_logic;
@@ -83,7 +83,6 @@ begin
                 -- Reset de todos os registradores
                 state_reg          <= IDLE;
                 bit_count_reg      <= 0;
-                next_bit_count_reg <= 0;
                 data_reg           <= (others => '0');
                 tx_buffer_reg      <= (others => '1');
                 uart_tx_reg        <= '1';
@@ -91,8 +90,6 @@ begin
                 busy_reg           <= '0';
                 phase_trigger_reg  <= '0';
             else
-
-                bit_count_reg <= next_bit_count_reg;
 
                 case(state_reg) is
                 
@@ -112,22 +109,26 @@ begin
                             phase_trigger_reg  <= '0';
                         end if;
 
-                    when TRIGGER =>
+                    when TRIGGER => -- Nesse estado o baud ticker lê o trigger recebido
                         uart_tx_reg        <= '1';
                         s_axis_tready_reg  <= '0';
                         busy_reg           <= '1';
                         phase_trigger_reg  <= '0';
                         state_reg          <= HALT;
 
-                    when HALT =>
+                    when HALT => -- Aguarda 1 ciclo de clock para timing correto do bit de start
                         uart_tx_reg        <= '1';
                         s_axis_tready_reg  <= '0';
                         busy_reg           <= '1';
                         phase_trigger_reg  <= '0';
                         state_reg          <= START;
 
-                    when START =>
-                        if (baud_tick = '1') then
+                    when START => -- Envia o bit de start
+                        uart_tx_reg        <= '0';
+                        s_axis_tready_reg  <= '0';
+                        busy_reg           <= '1';
+                        phase_trigger_reg  <= '0';
+                        if (baud_tick = '1') then -- Ao detectar o tick de baud, monta o frame que será transmitido
                             if (USE_PARITY) then
                                 tx_buffer_reg <= STOP_BITS_VEC & parity_bit & data_reg;
                             else
@@ -135,35 +136,30 @@ begin
                             end if;
                             bit_count_reg <= 0;
                             state_reg <= TRANSMIT;
-                        else
-                            uart_tx_reg        <= '0';
-                            s_axis_tready_reg  <= '0';
-                            busy_reg           <= '1';
-                            phase_trigger_reg  <= '0';
                         end if;
 
-                    when TRANSMIT =>
-                        uart_tx_reg        <= tx_buffer_reg(0);
+                    when TRANSMIT => -- Envia todos os bits do frame (DATA_BITS + PARITY_BITS + STOP_BITS)
+                        uart_tx_reg        <= tx_buffer_reg(0); -- Envia o Bit Menos Significativo
                         s_axis_tready_reg  <= '0';
                         busy_reg           <= '1';
                         phase_trigger_reg  <= '0';
                         if (baud_tick = '1') then
                             if (bit_count_reg < TX_BUFFER_BITS-1) then
-                                tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS-1 downto 1); -- Desloca
-                                next_bit_count_reg <= bit_count_reg + 1;
+                                tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS-1 downto 1); -- Desloca o buffer para ir para o próximo dado
+                                bit_count_reg <= bit_count_reg + 1;
                             else
-                                next_bit_count_reg <= 0;
+                                bit_count_reg <= 0;
                                 state_reg <= IDLE;
                             end if;
                         end if;
-                        
+
                 end case;
 
             end if;
         end if;
     end process sync_proc;
 
-    -- Conexões de Saída
+    -- Conexões com a Saída
     uart_tx       <= uart_tx_reg;
     s_axis_tready <= s_axis_tready_reg;
     busy          <= busy_reg;
