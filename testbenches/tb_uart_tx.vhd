@@ -21,7 +21,7 @@ architecture sim of tb_uart_tx is
     -- Configuração dos Módulos
     constant BAUDRATE    : natural := 921600;
     constant DATA_BITS   : natural := 8;
-    constant PARITY_TYPE : string  := "NONE";
+    constant PARITY_TYPE : string  := "EVEN";
     constant STOP_BITS   : natural := 1;
 
     -- Sinais de Conexão
@@ -106,6 +106,17 @@ begin
 
         -- Teste 1: Enviar Byte
         s_axis_tdata  <= "01010101";
+        s_axis_tvalid <= '1';
+
+        -- Espera pelo handshake (IDLE -> START)
+        wait until rising_edge(clk) and s_axis_tready = '1';
+        
+        -- Handshake concluído, abaixa o tvalid
+        s_axis_tvalid <= '0';
+
+        wait until rising_edge(clk) and s_axis_tready = '1';
+        -- Teste 2: Enviar Byte
+        s_axis_tdata  <= "10100010";
         s_axis_tvalid <= '1';
 
         -- Espera pelo handshake (IDLE -> START)
