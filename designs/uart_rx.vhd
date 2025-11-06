@@ -33,7 +33,7 @@ entity uart_rx is
         uart_rx : in std_logic; -- A linha serial de recepção
 
         -- Saída de Status
-        busy : out std_logic -- Nível lógico alto se o módulo está ocupado
+        busy : out std_logic -- Nível lógico alto se o módulo estiver ocupado
     );
 end entity uart_rx;
 
@@ -79,6 +79,7 @@ begin
     begin
         if rising_edge(clk) then
             if n_rst = '0' then
+                -- Reset de todos os registradores
                 state_reg         <= IDLE;
                 uart_rx_reg       <= '1';
                 data_count_reg    <= 0;
@@ -89,12 +90,13 @@ begin
                 busy_reg          <= '0';
             else
 
+                -- Registra o dado na linha serial RX
                 uart_rx_reg <= uart_rx;
 
                 case(state_reg) is
                 
                     when IDLE =>
-                        if (uart_rx_reg = '0') then
+                        if (uart_rx_reg = '0') then -- Caso o RX caia para '0' começa a recepção
                             phase_trigger_reg <= '1';
                             m_axis_tvalid_reg <= '0';
                             busy_reg          <= '1';
@@ -105,7 +107,7 @@ begin
                             busy_reg          <= '0';
                         end if;
 
-                    when START =>
+                    when START => -- Espera o baud tick centralizado no dado e verifica o bit de start ('0')
                         phase_trigger_reg <= '0';
                         m_axis_tvalid_reg <= '0';
                         busy_reg          <= '1';
@@ -118,17 +120,14 @@ begin
                             end if;
                         end if;  
 
-                    when DATA =>
-                        phase_trigger_reg <= '0';
-                        m_axis_tvalid_reg <= '0';
-                        busy_reg          <= '1';
+                    when DATA => -- Faz o sampling de todos os bits de dados ao receber o baud tick
                         if (baud_tick = '1') then
-                            m_axis_tdata_reg(data_count_reg) <= uart_rx_reg;
+                            m_axis_tdata_reg(data_count_reg) <= uart_rx_reg; -- Sampling
                             if (data_count_reg < DATA_BITS-1) then
                                 data_count_reg <= data_count_reg + 1;
                             else
                                 data_count_reg <= 0;
-                                if (USE_PARITY) then
+                                if (USE_PARITY) then -- Se houver paridade verifica, se não, vai para os bits de stop
                                     state_reg <= PARITY;
                                 else
                                     state_reg <= STOP;
@@ -136,10 +135,7 @@ begin
                             end if;
                         end if;
 
-                    when PARITY =>
-                        phase_trigger_reg <= '0';
-                        m_axis_tvalid_reg <= '0';
-                        busy_reg          <= '1';
+                    when PARITY => -- Verifica o bit de paridade
                         if (baud_tick = '1') then
                             if (parity_bit = uart_rx_reg) then
                                 stop_count_reg <= 0;
@@ -149,16 +145,14 @@ begin
                             end if;
                         end if;
 
-                    when STOP =>
-                        phase_trigger_reg <= '0';
-                        m_axis_tvalid_reg <= '0';
-                        busy_reg          <= '1';
+                    when STOP => -- Verifica os bits de stop
                         if (baud_tick = '1') then
                             if (uart_rx_reg = '1') then
                                 if (stop_count_reg < STOP_BITS-1) then
                                     stop_count_reg <= stop_count_reg + 1;
                                 else
                                     stop_count_reg <= 0;
+                                    m_axis_tvalid_reg <= '1'; -- Indica que o dado lido é válido
                                     state_reg      <= AXIS;
                                 end if;
                             else
@@ -166,14 +160,12 @@ begin
                             end if;
                         end if;
 
-                    when AXIS =>
-                        phase_trigger_reg <= '0';
-                        busy_reg          <= '1';
-                        if (m_axis_tready = '1') then
-                            m_axis_tvalid_reg <= '1';
+                    when AXIS => -- Espera o hand-shake AXIS
+                        if (m_axis_tready = '1') then -- Se o hand-shake acontecer, retorna ao estado IDLE
+                            m_axis_tvalid_reg <= '0';
                             state_reg         <= IDLE;
                         else
-                            m_axis_tvalid_reg <= '0';
+                            m_axis_tvalid_reg <= '1';
                         end if;
     
                 end case;
