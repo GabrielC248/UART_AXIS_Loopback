@@ -18,10 +18,10 @@ architecture behavior of tb_uart_baud_ticker is
     constant T : time := 2 ns;
 
     -- Parâmetros
-    constant CLOCK_FREQ     : positive := 500000000; -- 500 MHz
-    constant OVERSAMPLE     : positive := 1;
-    constant BAUDRATE       : positive := 10000000;  -- 10 MHz
-    constant PHASE_FRACTION : real     := 0.5;
+    constant CLOCK_FREQ  : positive := 500000000; -- 500 MHz
+    constant OVERSAMPLE  : positive := 1;
+    constant BAUDRATE    : positive := 10000000;  -- 10 MHz
+    constant PHASE_VALUE : natural  := 50;
     
     -- Sinais de interface
     signal clk           : std_logic := '0';
@@ -34,10 +34,10 @@ begin
     -- Instanciação do Módulo
     UUT: entity work.uart_baud_ticker
         generic map (
-            CLOCK          => CLOCK_FREQ,
-            BAUDRATE       => BAUDRATE,
-            OVERSAMPLE     => OVERSAMPLE,
-            PHASE_FRACTION => PHASE_FRACTION
+            CLOCK       => CLOCK_FREQ,
+            BAUDRATE    => BAUDRATE,
+            OVERSAMPLE  => OVERSAMPLE,
+            PHASE_VALUE => PHASE_VALUE
         )
         port map (
             clk           => clk,

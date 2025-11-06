@@ -94,13 +94,12 @@ architecture sim of tb_uart_rx is
 
 begin
 
-    --
     ticker : entity work.uart_baud_ticker
         generic map (
-            CLOCK          => c_CLOCK_HZ,
-            BAUDRATE       => c_BAUD_RATE,
-            OVERSAMPLE     => 1,       -- Conforme nossa lógica de RX
-            PHASE_FRACTION => 0.5      -- Conforme nossa lógica de RX
+            CLOCK        => c_CLOCK_HZ,
+            BAUDRATE     => c_BAUD_RATE,
+            OVERSAMPLE   => 1, -- Conforme nossa lógica de RX
+            PHASE_VALUE  => 50 -- Conforme nossa lógica de RX
         )
         port map (
             clk           => tb_clk,

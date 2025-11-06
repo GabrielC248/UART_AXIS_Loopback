@@ -12,10 +12,10 @@ use IEEE.math_real.all;
 
 entity uart_baud_ticker is
     generic (
-        CLOCK          : natural := 25000000;        -- Frequência do clock de entrada em Hz
-        BAUDRATE       : natural := 115200;          -- Baudrate desejado para a comunicação UART
-        OVERSAMPLE     : natural := 1;               -- Fator de oversampling
-        PHASE_FRACTION : natural range 0 to 100 := 0 -- Fator de fase (0 a 100) (50 para RX e 0 ou 100 para TX)
+        CLOCK       : natural := 25000000;        -- Frequência do clock de entrada em Hz
+        BAUDRATE    : natural := 115200;          -- Baudrate desejado para a comunicação UART
+        OVERSAMPLE  : natural := 1;               -- Fator de oversampling
+        PHASE_VALUE : natural range 0 to 100 := 0 -- Fator de fase (0 a 100) (50 para RX e 0 ou 100 para TX)
     );
     port (
         clk           : in  std_logic; -- Entrada do clock de sistema

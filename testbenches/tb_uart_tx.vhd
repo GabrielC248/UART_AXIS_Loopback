@@ -46,10 +46,10 @@ begin
     -- Instanciação do Ticker (com PHASE_FRACTION = 0.0)
     ticker_inst : entity work.uart_baud_ticker
         generic map (
-            CLOCK          => T_FREQ,
-            BAUDRATE       => BAUDRATE,
-            OVERSAMPLE     => 1,
-            PHASE_FRACTION => 0.0 -- Configurado para "resetar"
+            CLOCK       => T_FREQ,
+            BAUDRATE    => BAUDRATE,
+            OVERSAMPLE  => 1,
+            PHASE_VALUE => 0 -- Configurado para "resetar"
         )
         port map (
             clk           => clk,
