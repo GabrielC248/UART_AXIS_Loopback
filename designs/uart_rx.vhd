@@ -22,7 +22,7 @@ entity uart_rx is
 
         -- Interface do Ticker
         baud_tick     : in  std_logic; -- Pulso de 1 ciclo no baud rate
-        phase_trigger : out std_logic; -- Pulso para o phase_trigger do ticker (a fase deve ser 0.5)
+        phase_trigger : out std_logic; -- Pulso para o phase_trigger do ticker (a fase deve ser 50)
 
         -- Interface de Dados (AXI-Stream)
         m_axis_tdata  : out std_logic_vector(DATA_BITS - 1 downto 0);

@@ -22,7 +22,7 @@ entity uart_tx is
 
         -- Interface do Ticker
         baud_tick     : in  std_logic; -- Pulso de 1 ciclo no baud rate
-        phase_trigger : out std_logic; -- Pulso para o phase_trigger do ticker (a fase deve ser 0.0 ou 1.0)
+        phase_trigger : out std_logic; -- Pulso para o phase_trigger do ticker (a fase deve ser 0 ou 100)
 
         -- Interface de Dados (AXI-Stream)
         s_axis_tdata  : in  std_logic_vector(DATA_BITS - 1 downto 0);

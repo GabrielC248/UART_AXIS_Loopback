@@ -12,10 +12,10 @@ use IEEE.math_real.all;
 
 entity uart_baud_ticker is
     generic (
-        CLOCK          : natural := 25000000; -- Frequência do clock de entrada em Hz
-        BAUDRATE       : natural := 115200;   -- Baudrate desejado para a comunicação UART
-        OVERSAMPLE     : natural := 1;        -- Fator de oversampling
-        PHASE_FRACTION : real    := 0.5       -- Fator de fase fracionário (0.0 a 1.0) (0.5 para RX e 0.0 para TX)
+        CLOCK          : natural := 25000000;        -- Frequência do clock de entrada em Hz
+        BAUDRATE       : natural := 115200;          -- Baudrate desejado para a comunicação UART
+        OVERSAMPLE     : natural := 1;               -- Fator de oversampling
+        PHASE_FRACTION : natural range 0 to 100 := 0 -- Fator de fase (0 a 100) (50 para RX e 0 ou 100 para TX)
     );
     port (
         clk           : in  std_logic; -- Entrada do clock de sistema
@@ -31,7 +31,7 @@ architecture rtl of uart_baud_ticker is
     constant DIV : natural := natural(round(real(CLOCK)/real(BAUDRATE*OVERSAMPLE)));
 
     -- Calcula o número de ciclos de atraso desejado a partir do trigger
-    constant DELAY_CYCLES : natural := natural(round(PHASE_FRACTION * real(DIV)));
+    constant DELAY_CYCLES : natural := natural(round((real(PHASE_FRACTION)*real(DIV))/real(100)));
 
     -- Calcula o valor que deve ser carregado no contador para que (DIV - PHASE_OFFSET_VALUE)
     -- seja o atraso desejado, o mod DIV permite o "wrap-around" desse valor
