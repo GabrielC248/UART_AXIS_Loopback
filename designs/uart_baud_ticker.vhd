@@ -31,7 +31,7 @@ architecture rtl of uart_baud_ticker is
     constant DIV : natural := natural(round(real(CLOCK)/real(BAUDRATE*OVERSAMPLE)));
 
     -- Calcula o número de ciclos de atraso desejado a partir do trigger
-    constant DELAY_CYCLES : natural := natural(round((real(PHASE_FRACTION)*real(DIV))/real(100)));
+    constant DELAY_CYCLES : natural := natural(round((real(PHASE_VALUE)*real(DIV))/real(100)));
 
     -- Calcula o valor que deve ser carregado no contador para que (DIV - PHASE_OFFSET_VALUE)
     -- seja o atraso desejado, o mod DIV permite o "wrap-around" desse valor
