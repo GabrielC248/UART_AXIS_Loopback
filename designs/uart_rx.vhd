@@ -29,7 +29,7 @@ entity uart_rx is
         m_axis_tvalid : out std_logic;
         m_axis_tready : in  std_logic;
 
-        -- Saída Serial
+        -- Entrada Serial
         uart_rx : in std_logic; -- A linha serial de recepção
 
         -- Saída de Status
