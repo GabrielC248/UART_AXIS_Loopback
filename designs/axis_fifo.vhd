@@ -42,10 +42,6 @@ architecture rtl of axis_fifo is
     signal wr_ptr     : natural range 0 to DEPTH-1 := 0;  -- Ponteiro de escrita
     signal rd_ptr     : natural range 0 to DEPTH-1 := 0;  -- Ponteiro de leitura
     signal data_count : natural range 0 to DEPTH   := 0;  -- Contador de elementos (precisa de um bit a mais para contar até DEPTH)
-    
-    -- Registradores para as Saídas
-    signal axis_tvalid_reg : std_logic := '0';
-    signal axis_tready_reg : std_logic := '0';
 
     -- Sinais internos para os flags de cheio/vazio
     signal fifo_full  : std_logic;
@@ -63,7 +59,6 @@ begin
         if rising_edge(clk) then
             if n_rst = '0' then
                 wr_ptr <= 0;
-                axis_tready_reg <= '0';
             else
                 if wr_en = '1' then
                     -- Escreve o dado na posição do ponteiro de escrita
@@ -76,9 +71,6 @@ begin
                     end if;
                 end if;
 
-                -- Sinal Ready registrado
-                axis_tready_reg <= not fifo_full;
-
             end if;
         end if;
     end process write_process;
@@ -89,7 +81,6 @@ begin
         if rising_edge(clk) then
             if n_rst = '0' then
                 rd_ptr <= 0;
-                axis_tvalid_reg <= '0';
             else
                 -- Lógica para o ponteiro de leitura
                 if rd_en = '1' then
@@ -100,9 +91,6 @@ begin
                         rd_ptr <= rd_ptr+1;
                     end if;
                 end if;
-
-                -- Saída Registrada
-                axis_tvalid_reg <= not fifo_empty;
 
             end if;
         end if;
@@ -132,16 +120,16 @@ begin
     fifo_empty <= '1' when data_count = 0   else '0';
 
     -- A escrita ocorre quando o lado Slave tem dados válidos e a FIFO está pronta
-    wr_en <= s_axis_tvalid and axis_tready_reg;
+    wr_en <= s_axis_tvalid and (not fifo_full);
     -- A leitura ocorre quando o lado Master está pronto e a FIFO tem dados válidos
-    rd_en <= m_axis_tready and axis_tvalid_reg;
+    rd_en <= m_axis_tready and (not fifo_empty);
 
     -- Liga o dado de saída. O dado lido é sempre o que está no endereço rd_ptr
     m_axis_tdata <= mem(rd_ptr);
+    
     -- A FIFO tem dados válidos para enviar se não estiver vazia
-    m_axis_tvalid <= axis_tvalid_reg;
-
+    m_axis_tvalid <= (not fifo_empty);
     -- A FIFO está pronta para receber dados se não estiver cheia
-    s_axis_tready <= axis_tready_reg;
+    s_axis_tready <= (not fifo_full);
 
 end architecture rtl;
