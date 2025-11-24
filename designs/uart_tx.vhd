@@ -22,7 +22,7 @@ entity uart_tx is
 
         -- Interface do Ticker
         baud_tick     : in  std_logic; -- Pulso de 1 ciclo no baud rate
-        phase_trigger : out std_logic; -- Pulso para o phase_trigger do ticker (a fase deve ser 0 ou 100)
+        phase_trigger : out std_logic; -- Pulso para o phase_trigger do ticker (a fase deve ser 0% ou 100%)
 
         -- Interface de Dados (AXI-Stream)
         s_axis_tdata  : in  std_logic_vector(DATA_BITS - 1 downto 0);
@@ -81,14 +81,14 @@ begin
         if rising_edge(clk) then
             if n_rst = '0' then
                 -- Reset de todos os registradores
-                state_reg          <= IDLE;
-                bit_count_reg      <= 0;
-                data_reg           <= (others => '0');
-                tx_buffer_reg      <= (others => '1');
-                uart_tx_reg        <= '1';
-                s_axis_tready_reg  <= '1';
-                busy_reg           <= '0';
-                phase_trigger_reg  <= '0';
+                state_reg         <= IDLE;
+                bit_count_reg     <= 0;
+                data_reg          <= (others => '0');
+                tx_buffer_reg     <= (others => '1');
+                uart_tx_reg       <= '1';
+                s_axis_tready_reg <= '1';
+                busy_reg          <= '0';
+                phase_trigger_reg <= '0';
             else
 
                 case(state_reg) is
@@ -97,37 +97,27 @@ begin
                         -- Caso o dado recebido seja válido, captura esse dado e vai para o próximo estado
                         if (s_axis_tvalid = '1' and s_axis_tready_reg = '1') then
                             data_reg <= s_axis_tdata; -- Captura o dado recebido pelo AXIS
-                            uart_tx_reg        <= '1';
-                            s_axis_tready_reg  <= '0';
-                            busy_reg           <= '1';
-                            phase_trigger_reg  <= '1';
+                            uart_tx_reg       <= '1';
+                            s_axis_tready_reg <= '0';
+                            busy_reg          <= '1';
+                            phase_trigger_reg <= '1';
                             state_reg <= TRIGGER;
                         else -- Saídas do estado IDLE
-                            uart_tx_reg        <= '1';
-                            s_axis_tready_reg  <= '1';
-                            busy_reg           <= '0';
-                            phase_trigger_reg  <= '0';
+                            uart_tx_reg       <= '1';
+                            s_axis_tready_reg <= '1';
+                            busy_reg          <= '0';
+                            phase_trigger_reg <= '0';
                         end if;
 
                     when TRIGGER => -- Nesse estado o baud ticker lê o trigger recebido
-                        uart_tx_reg        <= '1';
-                        s_axis_tready_reg  <= '0';
-                        busy_reg           <= '1';
-                        phase_trigger_reg  <= '0';
-                        state_reg          <= HALT;
+                        phase_trigger_reg <= '0';
+                        state_reg         <= HALT;
 
                     when HALT => -- Aguarda 1 ciclo de clock para timing correto do bit de start
-                        uart_tx_reg        <= '1';
-                        s_axis_tready_reg  <= '0';
-                        busy_reg           <= '1';
-                        phase_trigger_reg  <= '0';
-                        state_reg          <= START;
+                        state_reg <= START;
 
                     when START => -- Envia o bit de start
-                        uart_tx_reg        <= '0';
-                        s_axis_tready_reg  <= '0';
-                        busy_reg           <= '1';
-                        phase_trigger_reg  <= '0';
+                        uart_tx_reg <= '0';
                         if (baud_tick = '1') then -- Ao detectar o tick de baud, monta o frame que será transmitido
                             if (USE_PARITY) then
                                 tx_buffer_reg <= STOP_BITS_VEC & parity_bit & data_reg;
@@ -139,10 +129,7 @@ begin
                         end if;
 
                     when TRANSMIT => -- Envia todos os bits do frame (DATA_BITS + PARITY_BITS + STOP_BITS)
-                        uart_tx_reg        <= tx_buffer_reg(0); -- Envia o Bit Menos Significativo
-                        s_axis_tready_reg  <= '0';
-                        busy_reg           <= '1';
-                        phase_trigger_reg  <= '0';
+                        uart_tx_reg <= tx_buffer_reg(0); -- Envia o Bit Menos Significativo
                         if (baud_tick = '1') then
                             if (bit_count_reg < TX_BUFFER_BITS-1) then
                                 tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS-1 downto 1); -- Desloca o buffer para ir para o próximo dado

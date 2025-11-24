@@ -46,13 +46,13 @@ architecture rtl of uart_module is
 
 begin
     
-    -- Ticker para o TX (Fase 0)
+    -- Ticker para o TX (Fase 0%)
     ticker_tx : entity work.uart_baud_ticker
         generic map (
             CLOCK       => CLOCK,
             BAUDRATE    => BAUDRATE,
             OVERSAMPLE  => 1,
-            PHASE_VALUE => 0 -- Fase 0 para TX
+            PHASE_VALUE => 0 -- Fase 0% para TX
         )
         port map (
             clk           => clk,
@@ -61,13 +61,13 @@ begin
             baud_tick     => tx_baud_tick
         );
 
-    -- Ticker para o RX (Fase 50)
+    -- Ticker para o RX (Fase 50%)
     ticker_rx : entity work.uart_baud_ticker
         generic map (
             CLOCK       => CLOCK,
             BAUDRATE    => BAUDRATE,
             OVERSAMPLE  => 1,
-            PHASE_VALUE => 50 -- Fase 50 para RX
+            PHASE_VALUE => 50 -- Fase 50% para RX
         )
         port map (
             clk           => clk,

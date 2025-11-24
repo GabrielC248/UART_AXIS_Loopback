@@ -22,7 +22,7 @@ entity uart_rx is
 
         -- Interface do Ticker
         baud_tick     : in  std_logic; -- Pulso de 1 ciclo no baud rate
-        phase_trigger : out std_logic; -- Pulso para o phase_trigger do ticker (a fase deve ser 50)
+        phase_trigger : out std_logic; -- Pulso para o phase_trigger do ticker (a fase deve ser 50%)
 
         -- Interface de Dados (AXI-Stream)
         m_axis_tdata  : out std_logic_vector(DATA_BITS - 1 downto 0);
@@ -50,7 +50,7 @@ architecture rtl of uart_rx is
     end function xor_reduce;
 
     -- Constante do Frame
-    constant USE_PARITY  : boolean := (PARITY_TYPE /= "NONE");
+    constant USE_PARITY : boolean := (PARITY_TYPE /= "NONE");
 
     -- Definição dos Estados da Máquina de Estados
     type t_state is (IDLE, START, DATA, PARITY, STOP, AXIS);
@@ -109,8 +109,6 @@ begin
 
                     when START => -- Espera o baud tick centralizado no dado e verifica o bit de start ('0')
                         phase_trigger_reg <= '0';
-                        m_axis_tvalid_reg <= '0';
-                        busy_reg          <= '1';
                         if (baud_tick = '1') then
                             if (uart_rx_reg = '0') then
                                 data_count_reg <= 0;
@@ -118,7 +116,7 @@ begin
                             else
                                 state_reg <= IDLE;
                             end if;
-                        end if;  
+                        end if;
 
                     when DATA => -- Faz o sampling de todos os bits de dados ao receber o baud tick
                         if (baud_tick = '1') then
@@ -153,7 +151,7 @@ begin
                                 else
                                     stop_count_reg <= 0;
                                     m_axis_tvalid_reg <= '1'; -- Indica que o dado lido é válido
-                                    state_reg      <= AXIS;
+                                    state_reg <= AXIS;
                                 end if;
                             else
                                 state_reg <= IDLE;
@@ -164,10 +162,8 @@ begin
                         if (m_axis_tready = '1') then -- Se o hand-shake acontecer, retorna ao estado IDLE
                             m_axis_tvalid_reg <= '0';
                             state_reg         <= IDLE;
-                        else
-                            m_axis_tvalid_reg <= '1';
                         end if;
-    
+
                 end case;
 
             end if;

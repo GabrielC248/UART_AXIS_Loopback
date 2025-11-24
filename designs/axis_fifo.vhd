@@ -38,10 +38,10 @@ architecture rtl of axis_fifo is
     type mem_type is array (0 to DEPTH-1) of std_logic_vector(DATA_WIDTH-1 downto 0);
 
     -- Sinais internos
-    signal mem        : mem_type;                         -- A memória interna
-    signal wr_ptr     : natural range 0 to DEPTH-1 := 0;  -- Ponteiro de escrita
-    signal rd_ptr     : natural range 0 to DEPTH-1 := 0;  -- Ponteiro de leitura
-    signal data_count : natural range 0 to DEPTH   := 0;  -- Contador de elementos (precisa de um bit a mais para contar até DEPTH)
+    signal mem        : mem_type;                        -- A memória interna
+    signal wr_ptr     : natural range 0 to DEPTH-1 := 0; -- Ponteiro de escrita
+    signal rd_ptr     : natural range 0 to DEPTH-1 := 0; -- Ponteiro de leitura
+    signal data_count : natural range 0 to DEPTH   := 0; -- Contador de elementos (precisa de um bit a mais para contar até DEPTH)
 
     -- Sinais internos para os flags de cheio/vazio
     signal fifo_full  : std_logic;
