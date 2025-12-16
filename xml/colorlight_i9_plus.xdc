@@ -23,8 +23,8 @@ create_clock -name clk -period 40.0 [get_ports clk];
 
 # UART
 # ========================================
-set_property -dict {PACKAGE_PIN M3 IOSTANDARD LVCMOS33} [get_ports uart_rx]; #IO_L16P_T2_35 (Bank 35)    - (P5 15)
-set_property -dict {PACKAGE_PIN R3 IOSTANDARD LVCMOS33} [get_ports uart_tx]; #IO_L3P_T0_DQS_34 (Bank 34) - (P5 16)
+set_property -dict {PACKAGE_PIN M3 IOSTANDARD LVCMOS33} [get_ports rx]; #IO_L16P_T2_35 (Bank 35)    - (P5 15)
+set_property -dict {PACKAGE_PIN R3 IOSTANDARD LVCMOS33} [get_ports tx]; #IO_L3P_T0_DQS_34 (Bank 34) - (P5 16)
 
 # External Board I/Os
 # ========================================

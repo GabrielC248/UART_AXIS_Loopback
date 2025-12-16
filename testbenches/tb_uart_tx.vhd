@@ -44,7 +44,7 @@ architecture sim of tb_uart_tx is
 begin
 
     -- Instanciação do Ticker (com PHASE_FRACTION = 0.0)
-    ticker_inst : entity work.uart_baud_ticker
+    ticker_inst : entity work.uart_tx_baud_ticker
         generic map (
             CLOCK       => T_FREQ,
             BAUDRATE    => BAUDRATE,
@@ -73,7 +73,7 @@ begin
             s_axis_tdata     => s_axis_tdata,
             s_axis_tvalid    => s_axis_tvalid,
             s_axis_tready    => s_axis_tready,
-            uart_tx          => uart_tx,
+            tx               => uart_tx,
             busy             => busy
         );
 

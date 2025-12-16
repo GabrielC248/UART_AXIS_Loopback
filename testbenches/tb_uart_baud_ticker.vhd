@@ -32,7 +32,7 @@ architecture behavior of tb_uart_baud_ticker is
 begin
 
     -- Instanciação do Módulo
-    UUT: entity work.uart_baud_ticker
+    UUT: entity work.uart_tx_baud_ticker
         generic map (
             CLOCK       => CLOCK_FREQ,
             BAUDRATE    => BAUDRATE,

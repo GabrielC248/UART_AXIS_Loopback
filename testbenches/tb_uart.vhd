@@ -55,7 +55,7 @@ architecture sim of tb_uart is
 begin
 
     -- Ticker para o TX (Fase 0)
-    ticker_tx : entity work.uart_baud_ticker
+    ticker_tx : entity work.uart_tx_baud_ticker
         generic map (
             CLOCK       => CLOCK,
             BAUDRATE    => BAUDRATE,
@@ -70,7 +70,7 @@ begin
         );
 
     -- Ticker para o RX (Fase 50)
-    ticker_rx : entity work.uart_baud_ticker
+    ticker_rx : entity work.uart_rx_baud_ticker
         generic map (
             CLOCK       => CLOCK,
             BAUDRATE    => BAUDRATE,
@@ -116,7 +116,7 @@ begin
             s_axis_tdata  => tx_fifo_m_tdata,
             s_axis_tvalid => tx_fifo_m_tvalid,
             s_axis_tready => tx_fifo_m_tready,
-            uart_tx       => tb_uart_tx,
+            tx            => tb_uart_tx,
             busy          => open
         );
         
@@ -132,7 +132,7 @@ begin
             n_rst         => tb_n_rst,
             baud_tick     => rx_baud_tick,
             phase_trigger => rx_phase_trigger,
-            uart_rx       => tb_uart_rx,
+            rx            => tb_uart_rx,
             m_axis_tdata  => rx_fifo_s_tdata,
             m_axis_tvalid => rx_fifo_s_tvalid,
             m_axis_tready => rx_fifo_s_tready,

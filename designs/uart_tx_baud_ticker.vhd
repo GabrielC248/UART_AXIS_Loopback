@@ -2,7 +2,7 @@
 -- Company: CEPEDI
 -- Engineer: Gabriel Cavalcanti Coelho
 -- Create Date: 28.10.2025
--- Module Name: uart_baud_ticker
+-- Module Name: uart_tx_baud_ticker
 ----------------------------------------------------------------------------------
 
 library IEEE;
@@ -10,7 +10,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 use IEEE.math_real.all;
 
-entity uart_baud_ticker is
+entity uart_tx_baud_ticker is
     generic (
         CLOCK       : natural := 25000000;        -- Frequência do clock de entrada em Hz
         BAUDRATE    : natural := 115200;          -- Baudrate desejado para a comunicação UART
@@ -23,9 +23,9 @@ entity uart_baud_ticker is
         phase_trigger : in  std_logic; -- Ao ativar, reseta o contador para o valor de fase
         baud_tick     : out std_logic  -- Saída de um pulso ('tick'), ativa por um ciclo na frequência desejada
     );
-end entity uart_baud_ticker;
+end entity uart_tx_baud_ticker;
 
-architecture rtl of uart_baud_ticker is
+architecture rtl of uart_tx_baud_ticker is
 
     -- Constante que calcula o fator de divisão necessário
     constant DIV : natural := natural(round(real(CLOCK)/real(BAUDRATE*OVERSAMPLE)));

@@ -30,7 +30,7 @@ entity uart_tx is
         s_axis_tready : out std_logic;
 
         -- Saída Serial
-        uart_tx : out std_logic; -- A linha serial de transmissão
+        tx : out std_logic; -- A linha serial de transmissão
 
         -- Saída de Status
         busy : out std_logic -- Nível lógico alto se o módulo está ocupado
@@ -64,7 +64,7 @@ architecture rtl of uart_tx is
     signal data_reg      : std_logic_vector(DATA_BITS-1 downto 0) := (others => '0');
     signal tx_buffer_reg : std_logic_vector(TX_BUFFER_BITS-1 downto 0) := (others => '1');
     signal parity_bit    : std_logic;
-    signal uart_tx_reg       : std_logic := '1';
+    signal tx_reg            : std_logic := '1';
     signal s_axis_tready_reg : std_logic := '1';
     signal busy_reg          : std_logic := '0';
     signal phase_trigger_reg : std_logic := '0';
@@ -85,7 +85,7 @@ begin
                 bit_count_reg     <= 0;
                 data_reg          <= (others => '0');
                 tx_buffer_reg     <= (others => '1');
-                uart_tx_reg       <= '1';
+                tx_reg            <= '1';
                 s_axis_tready_reg <= '1';
                 busy_reg          <= '0';
                 phase_trigger_reg <= '0';
@@ -97,13 +97,13 @@ begin
                         -- Caso o dado recebido seja válido, captura esse dado e vai para o próximo estado
                         if (s_axis_tvalid = '1' and s_axis_tready_reg = '1') then
                             data_reg <= s_axis_tdata; -- Captura o dado recebido pelo AXIS
-                            uart_tx_reg       <= '1';
+                            tx_reg            <= '1';
                             s_axis_tready_reg <= '0';
                             busy_reg          <= '1';
                             phase_trigger_reg <= '1';
                             state_reg <= TRIGGER;
                         else -- Saídas do estado IDLE
-                            uart_tx_reg       <= '1';
+                            tx_reg            <= '1';
                             s_axis_tready_reg <= '1';
                             busy_reg          <= '0';
                             phase_trigger_reg <= '0';
@@ -117,7 +117,7 @@ begin
                         state_reg <= START;
 
                     when START => -- Envia o bit de start
-                        uart_tx_reg <= '0';
+                        tx_reg <= '0';
                         if (baud_tick = '1') then -- Ao detectar o tick de baud, monta o frame que será transmitido
                             if (USE_PARITY) then
                                 tx_buffer_reg <= STOP_BITS_VEC & parity_bit & data_reg;
@@ -129,7 +129,7 @@ begin
                         end if;
 
                     when TRANSMIT => -- Envia todos os bits do frame (DATA_BITS + PARITY_BITS + STOP_BITS)
-                        uart_tx_reg <= tx_buffer_reg(0); -- Envia o Bit Menos Significativo
+                        tx_reg <= tx_buffer_reg(0); -- Envia o Bit Menos Significativo
                         if (baud_tick = '1') then
                             if (bit_count_reg < TX_BUFFER_BITS-1) then
                                 tx_buffer_reg <= '1' & tx_buffer_reg(TX_BUFFER_BITS-1 downto 1); -- Desloca o buffer para ir para o próximo dado
@@ -147,7 +147,7 @@ begin
     end process sync_proc;
 
     -- Conexões com a Saída
-    uart_tx       <= uart_tx_reg;
+    tx            <= tx_reg;
     s_axis_tready <= s_axis_tready_reg;
     busy          <= busy_reg;
     phase_trigger <= phase_trigger_reg;

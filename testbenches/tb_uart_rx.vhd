@@ -94,7 +94,7 @@ architecture sim of tb_uart_rx is
 
 begin
 
-    ticker : entity work.uart_baud_ticker
+    ticker : entity work.uart_rx_baud_ticker
         generic map (
             CLOCK        => c_CLOCK_HZ,
             BAUDRATE     => c_BAUD_RATE,
@@ -117,7 +117,7 @@ begin
         port map (
             clk           => tb_clk,
             n_rst         => tb_n_rst,
-            uart_rx       => w_uart_rx_line,  -- Linha de simulação
+            rx            => w_uart_rx_line,  -- Linha de simulação
             baud_tick     => w_baud_tick,     -- Do ticker
             phase_trigger => w_phase_trigger, -- Para o ticker
             m_axis_tdata  => w_axis_tdata,

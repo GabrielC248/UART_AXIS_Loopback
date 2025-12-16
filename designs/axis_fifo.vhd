@@ -11,8 +11,8 @@ use IEEE.numeric_std.all;
 
 entity axis_fifo is
     generic (
-        DATA_WIDTH : natural := 8; -- Largura da palavra de dados em bits
-        DEPTH      : natural := 16 -- Profundidade da FIFO (número de palavras)
+        DATA_WIDTH : natural := 8;  -- Largura da palavra de dados em bits
+        DEPTH      : natural := 128 -- Profundidade da FIFO (número de palavras)
     );
     port (
         -- Sinais Globais

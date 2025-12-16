@@ -30,7 +30,7 @@ entity uart_rx is
         m_axis_tready : in  std_logic;
 
         -- Entrada Serial
-        uart_rx : in std_logic; -- A linha serial de recepção
+        rx : in std_logic; -- A linha serial de recepção
 
         -- Saída de Status
         busy : out std_logic -- Nível lógico alto se o módulo estiver ocupado
@@ -57,7 +57,7 @@ architecture rtl of uart_rx is
     signal state_reg : t_state := IDLE;
 
     -- Sinais da Máquina de Estados
-    signal uart_rx_reg    : std_logic := '1';
+    signal rx_reg         : std_logic := '1';
     signal data_count_reg : natural range 0 to DATA_BITS-1 := 0;
     signal stop_count_reg : natural range 0 to STOP_BITS-1 := 0;
     signal parity_bit     : std_logic;
@@ -81,7 +81,7 @@ begin
             if n_rst = '0' then
                 -- Reset de todos os registradores
                 state_reg         <= IDLE;
-                uart_rx_reg       <= '1';
+                rx_reg            <= '1';
                 data_count_reg    <= 0;
                 stop_count_reg    <= 0;
                 phase_trigger_reg <= '0';
@@ -91,12 +91,12 @@ begin
             else
 
                 -- Registra o dado na linha serial RX
-                uart_rx_reg <= uart_rx;
+                rx_reg <= rx;
 
                 case(state_reg) is
                 
                     when IDLE =>
-                        if (uart_rx_reg = '0') then -- Caso o RX caia para '0' começa a recepção
+                        if (rx_reg = '0') then -- Caso o RX caia para '0' começa a recepção
                             phase_trigger_reg <= '1';
                             m_axis_tvalid_reg <= '0';
                             busy_reg          <= '1';
@@ -110,7 +110,7 @@ begin
                     when START => -- Espera o baud tick centralizado no dado e verifica o bit de start ('0')
                         phase_trigger_reg <= '0';
                         if (baud_tick = '1') then
-                            if (uart_rx_reg = '0') then
+                            if (rx_reg = '0') then
                                 data_count_reg <= 0;
                                 state_reg <= DATA;
                             else
@@ -120,7 +120,7 @@ begin
 
                     when DATA => -- Faz o sampling de todos os bits de dados ao receber o baud tick
                         if (baud_tick = '1') then
-                            m_axis_tdata_reg(data_count_reg) <= uart_rx_reg; -- Sampling
+                            m_axis_tdata_reg(data_count_reg) <= rx_reg; -- Sampling
                             if (data_count_reg < DATA_BITS-1) then
                                 data_count_reg <= data_count_reg + 1;
                             else
@@ -135,7 +135,7 @@ begin
 
                     when PARITY => -- Verifica o bit de paridade
                         if (baud_tick = '1') then
-                            if (parity_bit = uart_rx_reg) then
+                            if (parity_bit = rx_reg) then
                                 stop_count_reg <= 0;
                                 state_reg <= STOP;
                             else
@@ -145,7 +145,7 @@ begin
 
                     when STOP => -- Verifica os bits de stop
                         if (baud_tick = '1') then
-                            if (uart_rx_reg = '1') then
+                            if (rx_reg = '1') then
                                 if (stop_count_reg < STOP_BITS-1) then
                                     stop_count_reg <= stop_count_reg + 1;
                                 else
