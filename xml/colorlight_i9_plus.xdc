@@ -131,5 +131,5 @@ set_property -dict {PACKAGE_PIN R3 IOSTANDARD LVCMOS33} [get_ports tx]; #IO_L3P_
 #set_property -dict {PACKAGE_PIN Y1 IOSTANDARD LVCMOS33} [get_ports port]; #IO_L5N_T0_34 (Bank 34)       - (P2 24)
 #set_property -dict {PACKAGE_PIN V3 IOSTANDARD LVCMOS33} [get_ports port]; #IO_L6N_T0_VREF_34 (Bank 34)  - (P2 25)
 #set_property -dict {PACKAGE_PIN U3 IOSTANDARD LVCMOS33} [get_ports port]; #IO_L6P_T0_34 (Bank 34)       - (P2 26)
-#set_property -dict {PACKAGE_PIN T4 IOSTANDARD LVCMOS33} [get_ports port]; #IO_L13N_T2_MRCC_34 (Bank 34) - (P2 27)
+set_property -dict {PACKAGE_PIN T4 IOSTANDARD LVCMOS33} [get_ports n_btn]; #IO_L13N_T2_MRCC_34 (Bank 34) - (P2 27)
 set_property -dict {PACKAGE_PIN R2 IOSTANDARD LVCMOS33} [get_ports n_rst]; #IO_L3N_T0_DQS_34 (Bank 34)   - (P2 28)
